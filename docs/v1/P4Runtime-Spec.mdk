@@ -1,5 +1,5 @@
 Title : P4Runtime Specification
-Title Note: version 1.0.0
+Title Note: version 1.1.0-rc.1
 Title Footer: &date;
 Author: The P4.org API Working Group
 Heading depth: 5
@@ -223,14 +223,15 @@ protocol-independent runtime APIs for P4-defined or P4-described data
 planes. This document specifies one such API, called *P4Runtime*. It is meant to
 disambiguate and augment the programmatic API definition expressed in Protobuf
 format and available at
-[https://github.com/p4lang/p4runtime/tree/v1.0.0/proto](https://github.com/p4lang/p4runtime/tree/v1.0.0/proto).
+[https://github.com/p4lang/p4runtime/tree/v1.1.0-rc.1/proto](https://github.com/p4lang/p4runtime/tree/v1.1.0-rc.1/proto).
 
 ## P4 Language Version Applicability
 
 P4Runtime is designed to be implemented in conjunction with the P4~16~ language
 version or later. P4~14~ programs should be translated into P4~16~ to be made
 compatible with P4Runtime. This version of P4Runtime utilizes features which are
-not in P4~16~ 1.0, but were introduced in P4~16~ 1.1.0 [@P4Spec].
+not in P4~16~ 1.0, but were introduced in P4~16~ 1.1.0 [@P4Revisions110]. For
+this version of P4Runtime, we recommend using P4~16~ 1.2.0 [@P4Spec].
 
 ## In Scope
 
@@ -4420,7 +4421,7 @@ sent sequentially, waiting for the previous call to be acknowledged before
 sending the next one.
 
 
-## Batch Atomicity
+## Batch Atomicity { #sec-batch-atomicity}
 
 A P4Runtime server may arbitrarily reorder messages within a batch. The
 atomicity semantics of the batch operations are defined by the `Atomicity`
@@ -5179,6 +5180,31 @@ error {
 }
 ~ End Prototext
 
+# `Capabilities` RPC
+
+The `Capabilities` RPC offers a mechanism through which a P4Runtime client can
+discover the capabilities of the P4Runtime server implementation. At the moment,
+the `CapabilitiesRequest` message is empty and the `CapabilitiesResponse`
+message only includes the `p4runtime_api_version` string field. This field must
+be set to the full semantic version string [@SemVer] corresponding to the
+version of the P4Runtime API implemented by the server, &eg; "1.1.0-rc.1".
+
+Future versions of P4Runtime may introduce more advanced capability discovery
+features. For example, P4Runtime supports three [atomicity
+modes](#sec-batch-atomicity) for `WriteRequest` batches, two of them being
+optional. In the future we may decide to leverage the `CapabilitiesResponse`
+message to enable the server to report to the client which subset of these
+atomicity modes is supported.
+
+The semantic version string included in `CapabilitiesResponse` can be used by
+the client to determine which exact feature set is implemented by the server,
+since [minor releases](#sec-p4runtime-versioning) may introduce new
+functionality. However, because the `Capabilities` RPC itself was introduced in
+version 1.1 of P4Runtime, the client should assume that any server which does
+not implement this RPC (&ie; an `UNIMPLEMENTED` error is returned by the
+P4Runtime service) implements an older version of the P4Runtime specification
+(1.0 or a pre-release version of 1.0).
+
 # Portability Considerations
 
 ## PSA Metadata Translation { #sec-psa-metadata-translation}
@@ -5430,7 +5456,7 @@ using SDN port numbers as indices, and not device-specific port numbers. The
 `index_type_name` field in the P4Info message is a signal to the P4Runtime
 server that translation is required.
 
-# P4Runtime Versioning
+# P4Runtime Versioning { #sec-p4runtime-versioning}
 
 P4Runtime follows the Google guidelines for versioning cloud APIs
 [@APIVersioning]. We use a `MAJOR.MINOR.PATCH` style version number scheme and
@@ -5599,7 +5625,7 @@ field [@ProtoAny]. At the moment, there is not any mechanism to extend the
 `p4.v1.TableEntry` message based on the value of architecture-specific table
 properties, but we may include on in future versions of the API.
 
-# Known limitations of P4Runtime v1.0.0
+# Known Limitations of Current P4Runtime Version
 
 * `FieldMatch`, action `Param`, and controller packet metadata fields only
   support unsigned bitstrings, &ie; values of one of the following types (not
@@ -5642,6 +5668,33 @@ Similarly, using TLS to authenticate and encrypt the gRPC channel can prevent
 man-in-the-middle attacks between the server and client.
 
 # Appendix { @h1:"A"}
+
+## Revision History
+
+### Changes in v1.1.0
+
+* Major overhaul of master-arbitration: while the Protobuf messages did not
+  change, the state machine that the server needs to implement is significantly
+  different. Upon the master disconnection, the server no longer chooses the
+  controller with the second highest election id as the new master. Instead,
+  there will not be a new master until one of the controllers advertises an
+  election id higher than any election id seen previously.
+* Add `error` field to stream messages sent by the server.
+* Add `Capabilities` RPC to query the P4Runtime API version implemented by the
+  server.
+* Support wildcard reads for multicast groups and clone sessions.
+* Support for modifying direct resources of const tables.
+* Support P4 user-defined types for Packet IO metadata fields.
+* Clarify consistency requirements for `Write` and `Read` RPCs.
+* Add Appendix providing implementation advice for avoiding common pitfalls:
+  * advice on setting gRPC Metadata Maximum Size
+  * advice on setting gRPC Server Maximum Receive Message Size
+* Clarify limitations on supported types for `FieldMatch`, action `Param`, and
+  Packet IO metadata fields.
+* Clarify that reading entire forwarding state with empty `entity` is not
+  supported.
+* Document that `@p4runtime_translation` need only be supported when applied to
+  type declarations in P4.
 
 ## P4 Annotations
 
