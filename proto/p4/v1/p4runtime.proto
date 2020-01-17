@@ -148,7 +148,7 @@ message TableEntry {
   repeated FieldMatch match = 2;
   TableAction action = 3;
   // Should only be set if the match implies a TCAM lookup, i.e. at least one of
-  // the match fields is Optioan, Ternary or Range.  A higher number indicates
+  // the match fields is Optional, Ternary or Range.  A higher number indicates
   // higher priority.  Only a highest priority entry that matches the packet
   // must be selected.  Multiple entries in the same table with the same
   // priority value are permitted.  See Section "TableEntry" in the
